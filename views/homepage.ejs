@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Videos Lists</title>
+</head>
+
+<body>
+  <h1>Videos List</h1>
+
+  <ul>
+    <% videos.forEach(video=> { %>
+      <li>
+        <a href="/video/<%= video._id %>">
+          <%= video.filename %>
+        </a>
+      </li>
+      <% }) %>
+  </ul>
+
+  <a href="http://localhost:3000/upload">
+    Upload Video
+  </a>
+</body>
+
+</html>

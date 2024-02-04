@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Watch Video - <%= file.filename %>
+  </title>
+</head>
+
+<body>
+  <h1>
+    <%= file.filename%>
+  </h1>
+
+  <video src="/stream/<%= file._id%>" width="50%" controls>
+    <!-- <source src="/stream/<%= file._id %>"> -->
+    Your browser does not support the video tag.
+  </video>
+</body>
+
+</html>
