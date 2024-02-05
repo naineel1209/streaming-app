@@ -30,6 +30,11 @@ app.set("views", "./views");
 //   }
 // });
 
+app.use((req, res, next) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  next();
+})
+
 app.get("/home-page", async (req, res) => {
   console.log(req.baseUrl);
   if (!process.env.MONGO_URI) {
@@ -39,10 +44,6 @@ app.get("/home-page", async (req, res) => {
   const bucket = await getBucket(process.env.MONGO_URI, "videos");
   const data = await bucket.find({}).toArray();
 
-  res.setHeader(
-    "Cache-Control",
-    "no-store, no-cache, must-revalidate, private"
-  );
   return res.render("homepage", {
     videos: data,
   });

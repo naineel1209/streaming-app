@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Watch Video - <%= file.filename %>
   </title>
+  <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
 </head>
 
 <body>
@@ -13,10 +14,16 @@
     <%= file.filename%>
   </h1>
 
-  <video src="/stream/<%= file._id%>" width="50%" controls>
-    <!-- <source src="/stream/<%= file._id %>"> -->
-    Your browser does not support the video tag.
+  <video id="my-video" class="video-js" controls preload="auto" width="640" height="264" data-setup="{}">
+    <source src="http://localhost:3000/stream/<%= file.filename %>" type="video/mp4" />
+    <p class="vjs-no-js">
+      To view this video please enable JavaScript, and consider upgrading to a
+      web browser that
+      <a rel="noopener" href="https://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a>
+    </p>
   </video>
+
+  <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
 </body>
 
 </html>

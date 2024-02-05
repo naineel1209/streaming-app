@@ -46,7 +46,7 @@ router
     if (file) {
       if (process.env.MONGO_URI) {
         const resObj = await mongoUploader(process.env.MONGO_URI, file);
-        await fs.promises.unlink(file.path);
+        // await fs.promises.unlink(file.path);
 
         return res.render("upload_success", {
           file: resObj,

@@ -3,6 +3,7 @@ import { getBucket } from "../mongoUploader/connect2mongo.ts";
 import { config } from "dotenv";
 import { pipeline } from "node:stream";
 import mongoose from "mongoose";
+import RangeParser from "range-parser";
 config();
 
 const router = Router();
@@ -15,65 +16,100 @@ router.route("/:id").get(async (req, res) => {
   if (!id) {
     return res.status(400).send("No id found");
   } else if (!process.env.MONGO_URI) {
+    return res.status(500).send("URI not found");
   } else {
     const bucket = await getBucket(process.env.MONGO_URI, "videos");
 
-    const data = await bucket
-      .find({ _id: new mongoose.Types.ObjectId(id) })
-      .toArray();
-    const file = data[0];
+    const [data] = await bucket.find({ filename: id }).toArray();
 
-    if (!file) {
-      return res.status(404).send("File not found");
-    }
+    const range = req.headers.range || "bytes=0-";
 
-    const range = req.headers.range;
-    if (!range) {
-      return res.status(400).send("No range found");
-    }
+    const { filename, length } = data;
+    const ext = filename.split(".").pop();
+    const fileSize = length;
+    const start = Number(range.replace(/\D/g, ""));
 
-    const fileSize = file.length;
-    const start = parseInt(range.replace(/bytes=/, "").split("-")[0], 10);
-    const end = Math.min(start + 100000, fileSize - 1);
 
-    if (start > end) {
-      return res.status(416).send("Requested range not satisfiable");
-    }
+    const CHUNK_SIZE = 1024 * 1024; // 1MB
+    const end = Math.min(start + CHUNK_SIZE, fileSize);
 
     const contentLength = end - start + 1;
-    const ext = file.filename.split(".").pop();
+
+    const readStream = bucket.openDownloadStreamByName(filename, {
+      start,
+      end
+    });
 
     const headers = {
-      "Content-Range": "bytes " + start + "-" + end + "/" + file.length,
-      "Content-Length": contentLength,
+      "Content-Range": `bytes ${start.toString()}-${end.toString()}/${fileSize.toString()}`,
       "Accept-Ranges": "bytes",
-      "Content-Type": `video/mp4`,
+      "Content-Length": contentLength,
+      "Content-Type": `video/${ext}`,
     };
 
     console.log(headers);
-
-    console.log(
-      "start ",
-      start,
-      " end ",
-      end,
-      " fileSize ",
-      fileSize,
-      " ext ",
-      ext
-    );
-
-    if (start >= fileSize) {
-      res.status(416).send("Requested range not satisfiable");
-      return;
-    }
+    console.log("start ", start, " end ", end, " fileSize ", fileSize, " ext ", ext);
 
     res.writeHead(206, headers);
-    const readStream = bucket.openDownloadStreamByName(file.filename, {
-      start,
-    });
     readStream.pipe(res);
+
+    // const data = await bucket
+    //   .find({ _id: new mongoose.Types.ObjectId(id) })
+    //   .toArray();
+    // const file = data[0];
+
+    // if (!file) {
+    //   return res.status(404).send("File not found");
+    // }
+
+    // const range = req.headers.range;
+    // if (!range) {
+    //   return res.status(400).send("No range found");
+    // }
+
+    // const fileSize = file.length;
+    // const start = parseInt(range.replace(/bytes=/, "").split("-")[0], 10);
+    // const end = Math.min(start + 100000, fileSize - 1);
+
+    // if (start > end) {
+    //   return res.status(416).send("Requested range not satisfiable");
+    // }
+
+    // const contentLength = end - start + 1;
+    // const ext = file.filename.split(".").pop();
+
+    // const headers = {
+    //   "Content-Range": "bytes " + start + "-" + end + "/" + file.length,
+    //   "Content-Length": contentLength,
+    //   "Accept-Ranges": "bytes",
+    //   "Content-Type": `video/mp4`,
+    // };
+
+    // console.log(headers);
+
+    // console.log(
+    //   "start ",
+    //   start,
+    //   " end ",
+    //   end,
+    //   " fileSize ",
+    //   fileSize,
+    //   " ext ",
+    //   ext
+    // );
+
+    // if (start >= fileSize) {
+    //   res.status(416).send("Requested range not satisfiable");
+    //   return;
+    // }
+
+    // res.writeHead(206, headers);
+    // const readStream = bucket.openDownloadStreamByName(file.filename, {
+    //   start,
+    // });
+    // readStream.pipe(res);
   }
+
 });
 
 export default router;

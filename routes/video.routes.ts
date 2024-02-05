@@ -13,7 +13,6 @@ router.route("/:id").get(async (req, res) => {
     const data = await bucket
       .find({ _id: new mongoose.Types.ObjectId(id) })
       .toArray();
-    console.log(data[0]);
 
     return res.render("watch_video", {
       file: data[0],
