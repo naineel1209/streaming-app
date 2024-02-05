@@ -3,3 +3,4 @@ assets
 output
 temp
 output_file.mp3
+.env
