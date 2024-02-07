@@ -2,7 +2,7 @@ import { Router } from "express";
 import { getBucket } from "../mongoUploader/connect2mongo.ts";
 import { config } from "dotenv";
 import { pipeline } from "node:stream";
-import mongoose from "mongoose";
+import mongoose, { Cursor } from "mongoose";
 import RangeParser from "range-parser";
 config();
 
@@ -24,24 +24,31 @@ router.route("/:id").get(async (req, res) => {
 
     const range = req.headers.range || "bytes=0-";
 
-    const { filename, length } = data;
+    const { filename, length, chunkSize } = data;
     const ext = filename.split(".").pop();
     const fileSize = length;
     const start = Number(range.replace(/\D/g, ""));
 
 
     const CHUNK_SIZE = 1024 * 1024; // 1MB
-    const end = Math.min(start + CHUNK_SIZE, fileSize);
+    // const CHUNK_SIZE = chunkSize; // 1MB
+    let end;
+    let readStream: mongoose.mongo.GridFSBucketReadStream;
 
-    const contentLength = end - start + 1;
+    //start + chunksize is greater than the file size then end is the file size
+    if (start + CHUNK_SIZE >= fileSize) {
+      end = fileSize - 1;
+    }
+    //start + chunksize is less than the file size then end is start + chunksize
+    else {
+      end = Math.min(start + CHUNK_SIZE, fileSize - 1);
+    }
 
-    const readStream = bucket.openDownloadStreamByName(filename, {
-      start,
-      end
-    });
+    const contentLength = (end - start) + 1;
+
 
     const headers = {
-      "Content-Range": `bytes ${start.toString()}-${end.toString()}/${fileSize.toString()}`,
+      "Content-Range": `bytes ${start}-${end}/${length}`,
       "Accept-Ranges": "bytes",
       "Content-Length": contentLength,
       "Content-Type": `video/${ext}`,
@@ -51,63 +58,17 @@ router.route("/:id").get(async (req, res) => {
     console.log("start ", start, " end ", end, " fileSize ", fileSize, " ext ", ext);
 
     res.writeHead(206, headers);
-    readStream.pipe(res);
+    readStream = bucket.openDownloadStreamByName(filename, {
+      start,
+      end
+    });
+    pipeline(readStream, res, (err) => {
+      if (err) {
+        console.log(err);
+      }
 
-    // const data = await bucket
-    //   .find({ _id: new mongoose.Types.ObjectId(id) })
-    //   .toArray();
-    // const file = data[0];
-
-    // if (!file) {
-    //   return res.status(404).send("File not found");
-    // }
-
-    // const range = req.headers.range;
-    // if (!range) {
-    //   return res.status(400).send("No range found");
-    // }
-
-    // const fileSize = file.length;
-    // const start = parseInt(range.replace(/bytes=/, "").split("-")[0], 10);
-    // const end = Math.min(start + 100000, fileSize - 1);
-
-    // if (start > end) {
-    //   return res.status(416).send("Requested range not satisfiable");
-    // }
-
-    // const contentLength = end - start + 1;
-    // const ext = file.filename.split(".").pop();
-
-    // const headers = {
-    //   "Content-Range": "bytes " + start + "-" + end + "/" + file.length,
-    //   "Content-Length": contentLength,
-    //   "Accept-Ranges": "bytes",
-    //   "Content-Type": `video/mp4`,
-    // };
-
-    // console.log(headers);
-
-    // console.log(
-    //   "start ",
-    //   start,
-    //   " end ",
-    //   end,
-    //   " fileSize ",
-    //   fileSize,
-    //   " ext ",
-    //   ext
-    // );
-
-    // if (start >= fileSize) {
-    //   res.status(416).send("Requested range not satisfiable");
-    //   return;
-    // }
-
-    // res.writeHead(206, headers);
-    // const readStream = bucket.openDownloadStreamByName(file.filename, {
-    //   start,
-    // });
-    // readStream.pipe(res);
+      readStream.destroy();
+    });
   }
 
 });
